@@ -1,0 +1,28 @@
+{
+  "entities": {
+    "Project": {
+      "title": "Project",
+      "description": "Un proyecto de marketing generado para un cliente.",
+      "type": "object",
+      "properties": {
+        "clientName": { "type": "string" },
+        "projectName": { "type": "string" },
+        "businessType": { "type": "string" },
+        "packageType": { "type": "string" },
+        "budget": { "type": "number" },
+        "extraInfo": { "type": "string" },
+        "images": { "type": "array", "items": { "type": "string" } },
+        "result": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "createdBy": { "type": "string" }
+      },
+      "required": ["clientName", "projectName", "businessType", "packageType", "createdAt", "createdBy"]
+    }
+  },
+  "firestore": {
+    "projects": {
+      "schema": "Project",
+      "description": "Colección de proyectos de la agencia."
+    }
+  }
+}

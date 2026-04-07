@@ -1,0 +1,26 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isValidProject(data) {
+      return data.clientName is string && data.clientName.size() > 0 && data.clientName.size() < 100 &&
+             data.projectName is string && data.projectName.size() > 0 && data.projectName.size() < 100 &&
+             data.userId is string && data.userId == request.auth.uid;
+    }
+
+    match /projects/{projectId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && isValidProject(request.resource.data);
+      allow update: if isAuthenticated() && isOwner(resource.data.userId) && isValidProject(request.resource.data);
+      allow delete: if isAuthenticated() && isOwner(resource.data.userId);
+    }
+  }
+}
