@@ -17,13 +17,9 @@
     },
     {
       "src": "/(.*)",
-      "dest": "/src/index.html"
+      "dest": "/dist/index.html"
     }
   ],
-  "env": {
-    "GEMINI_API_KEY": "@gemini_api_key",
-    "APP_URL": "@app_url"
-  },
   "installCommand": "npm install",
   "buildCommand": "npm run build",
   "outputDirectory": "dist"

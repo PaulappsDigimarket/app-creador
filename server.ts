@@ -272,8 +272,9 @@ async function startServer() {
           // External URL: fetch
           try {
             const logoResponse = await fetch(logoUrl);
-            const logoBuffer = await logoResponse.buffer();
-            archive.append(logoBuffer, { name: `05_LOGO_${i + 1}.png` });
+            const arrayBuffer = await logoResponse.arrayBuffer();
+            const buffer = Buffer.from(arrayBuffer);
+            archive.append(buffer, { name: `05_LOGO_${i + 1}.png` });
           } catch (err) {
             console.warn(`Failed to fetch logo ${i + 1}:`, err);
           }
