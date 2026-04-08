@@ -301,6 +301,7 @@ export default function App() {
     try {
       const projectData = {
         clientName,
+        projectName,
         extraInfo,
         branding: selectedCategory === 'Branding' ? result : null,
         web: (selectedCategory === 'Desarrollo Web' || selectedCategory === 'Aplicaciones Web') ? result : null,
@@ -314,11 +315,23 @@ export default function App() {
         body: JSON.stringify(projectData)
       });
 
-      const data = await response.json();
+      let data: any;
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        data = await response.json();
+      } else {
+        const text = await response.text();
+        throw new Error(`Error del servidor: ${response.status} - ${text.substring(0, 200)}`);
+      }
+
+      if (!response.ok) {
+        throw new Error(data?.error || `HTTP ${response.status}`);
+      }
+
       if (data.success) {
         alert('Proyecto guardado exitosamente');
       } else {
-        throw new Error(data.error);
+        throw new Error(data.error || 'No se pudo guardar el proyecto');
       }
     } catch (error: any) {
       console.error('Error saving project:', error);
@@ -342,7 +355,7 @@ export default function App() {
           id: p.id,
           userId: 'admin',
           clientName: p.clientName,
-          projectName: p.clientName,
+          projectName: p.projectName || p.clientName,
           extraInfo: p.extraInfo,
           category: p.branding ? 'Branding' : p.web ? 'Desarrollo Web' : p.social ? 'Social Media' : 'Aplicaciones Web',
           subPackageId: 'unknown',

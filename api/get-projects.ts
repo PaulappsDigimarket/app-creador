@@ -28,6 +28,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return {
         id: doc.id,
         clientName: data.clientName || '',
+        projectName: data.projectName || data.clientName || '',
         extraInfo: data.extraInfo || '',
         branding: data.branding || null,
         web: data.web || null,

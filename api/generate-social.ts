@@ -8,12 +8,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { clientName, subPackageId, extraInfo, images } = req.body;
 
     // Convert images to Gemini parts if they exist
-    const imageParts = (images || []).map((img: string) => {
-      const base64Data = img.split(',')[1] || img;
+    const imageParts = (images || []).map((img: any) => {
+      const imageString = typeof img === 'string' ? img : img?.url;
+      if (!imageString || typeof imageString !== 'string') {
+        throw new Error('Formato de imagen no válido');
+      }
+      const base64Data = imageString.includes(',') ? imageString.split(',')[1] : imageString;
+      const mimeType = imageString.startsWith('data:') ? imageString.split(':')[1].split(';')[0] : 'image/jpeg';
       return {
         inlineData: {
           data: base64Data,
-          mimeType: "image/jpeg"
+          mimeType
         }
       };
     });

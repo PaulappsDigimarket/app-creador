@@ -8,7 +8,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { clientName, extraInfo, branding, web, social, app } = req.body;
+    const { clientName, projectName, extraInfo, branding, web, social, app } = req.body;
 
     if (!clientName) {
       return res.status(400).json({ success: false, error: 'clientName is required' });
@@ -16,6 +16,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const projectData = {
       clientName,
+      projectName: projectName || '',
       extraInfo: extraInfo || '',
       branding: branding || null,
       web: web || null,
