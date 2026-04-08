@@ -3,9 +3,19 @@ import { GoogleGenAI, Type } from "@google/genai";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).json({ success: false, error: 'Method not allowed' });
+
   try {
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
     const { clientName, subPackageId, extraInfo, images } = req.body;
+
+    // Determinar cantidad de posts según el paquete
+    let numPosts = 4; // default
+    if (subPackageId === 'sm-1') numPosts = 8;
+    else if (subPackageId === 'sm-2') numPosts = 15;
+    else if (subPackageId === 'sm-3') numPosts = 20;
+    else if (subPackageId === 'sm-4') numPosts = 25;
+
+    console.log(`Generating ${numPosts} social media posts for package ${subPackageId}`);
 
     // Convert images to Gemini parts if they exist
     const imageParts = (images || []).map((img: any) => {
@@ -28,7 +38,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       console.log('Generating social media posts without images due to size limits');
       const simplePrompt = `
         Eres el Social Media Manager de DigiMarket RD.
-        Crea una tanda de 4 posts para las redes sociales del cliente: "${clientName}".
+        Crea una tanda de ${numPosts} posts para las redes sociales del cliente: "${clientName}".
         Información adicional: "${extraInfo}".
 
         IMPORTANTE: El cliente ha subido imágenes de referencia, pero debido a limitaciones técnicas, generarás los posts basados en la descripción textual.
@@ -38,7 +48,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         2. Los hashtags recomendados.
         3. Un prompt detallado en INGLÉS para generar la imagen.
 
-        Genera exactamente 4 posts.
+        Genera exactamente ${numPosts} posts.
         Responde SOLO con el JSON, sin explicaciones ni markdown.
       `;
 
@@ -74,15 +84,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const prompt = `
       Eres el Social Media Manager de DigiMarket RD.
-      Crea una tanda de 4 posts para las redes sociales del cliente: "${clientName}".
+      Crea una tanda de ${numPosts} posts para las redes sociales del cliente: "${clientName}".
       Información adicional: "${extraInfo}".
-      
-      IMPORTANTE - GUÍA DE ESTILO: 
-      Se ha proporcionado una imagen de referencia. 
-      1. Analiza profundamente el estilo visual de esta imagen (colores, iluminación, tipo de fotografía, ambiente).
+
+      IMPORTANTE - GUÍA DE ESTILO:
+      Se ha proporcionado una imagen de referencia.
+      1. Analiza profundamente el estilo visual de esta imagen (colores, iluminación, tipo de fotografía, ambiente, composición).
       2. El POST #1 DEBE usar obligatoriamente la imagen de referencia proporcionada (referenceImageIndex: 0).
-      3. Para los POSTS #2, #3 y #4, debes generar prompts en INGLÉS que describan escenas NUEVAS pero que mantengan EXACTAMENTE el mismo estilo visual, paleta de colores y "vibe" de la imagen de referencia. Queremos que parezcan de la misma sesión de fotos.
-      
+      3. Para los POSTS #2 al #${numPosts}, debes generar prompts en INGLÉS que describan escenas NUEVAS pero que mantengan EXACTAMENTE el mismo estilo visual, paleta de colores, iluminación, composición y "vibe" de la imagen de referencia. Queremos que TODOS los posts parezcan de la misma sesión de fotos y marca consistente.
+
       Para cada post debes generar:
       1. El texto (copy) persuasivo con emojis.
       2. Los hashtags recomendados.
@@ -117,7 +127,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     copy: { type: Type.STRING },
                     hashtags: { type: Type.STRING },
                     imagePrompt: { type: Type.STRING, description: "Prompt en inglés que IMITA el estilo de la referencia" },
-                    referenceImageIndex: { type: Type.NUMBER, description: "0 para usar la foto subida, null para generar una nueva" }
+                    referenceImageIndex: { type: [Type.NUMBER, Type.NULL], description: "0 para usar la foto subida, null para generar una nueva" }
                   },
                   required: ["copy", "hashtags", "imagePrompt"]
                 }
@@ -128,7 +138,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
       });
 
-      socialData = JSON.parse(response.text || "{}");
+      // Intentar parsear la respuesta como JSON
+      try {
+        socialData = JSON.parse(response.text || "{}");
+      } catch (parseError) {
+        console.error('Error parsing Gemini response as JSON:', parseError);
+        console.log('Raw response:', response.text);
+        // Si falla el parseo, usar la función sin imágenes
+        socialData = await generateSocialWithoutImages();
+      }
     } catch (error) {
       console.warn('Error with images in social media generation, trying without images:', error);
       socialData = await generateSocialWithoutImages();
@@ -136,24 +154,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Generate/Map Images
     const generatedPosts = [];
+    console.log(`Processing ${socialData.posts.length} posts with ${images?.length || 0} reference images`);
+
     for (let i = 0; i < socialData.posts.length; i++) {
       const post = socialData.posts[i];
       let imageUrl = "";
 
-      // Si la IA dice que usemos la referencia (índice 0) y existe
-      if (post.referenceImageIndex === 0 && images && images[0]) {
-        imageUrl = images[0];
+      // El primer post SIEMPRE usa la imagen de referencia si existe
+      if (i === 0 && images && images[0]) {
+        imageUrl = typeof images[0] === 'string' ? images[0] : images[0].url;
+        console.log(`Post ${i + 1}: Using reference image`);
       } else {
-        // Si no, generamos una nueva basada en el prompt de estilo
-        const encodedPrompt = encodeURIComponent(post.imagePrompt + " --v 6.0 --style raw --ar 1:1");
+        // Los demás posts generan imágenes nuevas pero consistentes
+        const stylePrompt = post.imagePrompt || `Professional business photography in the same style as the reference image, consistent lighting and colors`;
+        const encodedPrompt = encodeURIComponent(stylePrompt + " --v 6.0 --style raw --ar 1:1 --quality 2");
         const seed = Math.floor(Math.random() * 100000);
-        // Usamos un motor de renderizado más potente en el prompt
         imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?seed=${seed}&width=1080&height=1080&nologo=true&model=flux`;
+        console.log(`Post ${i + 1}: Generating new image with consistent style`);
       }
-      
-      generatedPosts.push({ ...post, imageUrl });
+
+      generatedPosts.push({
+        ...post,
+        imageUrl,
+        postNumber: i + 1
+      });
     }
 
+    console.log(`Successfully generated ${generatedPosts.length} posts`);
     res.json({ success: true, data: { strategy: socialData.strategy, posts: generatedPosts } });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
