@@ -1,5 +1,5 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc } from 'firebase/firestore';
 import { db } from '../src/firebase';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -21,8 +21,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       web: web || null,
       social: social || null,
       app: app || null,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     };
 
     const docRef = await addDoc(collection(db, 'projects'), projectData);
