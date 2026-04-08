@@ -329,17 +329,23 @@ export default function App() {
   const loadProjects = async () => {
     try {
       const response = await fetch('/api/get-projects');
+      const contentType = response.headers.get('content-type');
+      
+      if (!contentType || !contentType.includes('application/json')) {
+        console.error('Invalid response type:', contentType);
+        return;
+      }
+      
       const data = await response.json();
-      if (data.success) {
-        // Convertir los proyectos de Firebase al formato local
+      if (data.success && data.projects && data.projects.length > 0) {
         const firebaseProjects: Project[] = data.projects.map((p: any) => ({
           id: p.id,
           userId: 'admin',
           clientName: p.clientName,
-          projectName: p.clientName, // Usar clientName como projectName
+          projectName: p.clientName,
           extraInfo: p.extraInfo,
           category: p.branding ? 'Branding' : p.web ? 'Desarrollo Web' : p.social ? 'Social Media' : 'Aplicaciones Web',
-          subPackageId: 'unknown', // No tenemos esta info
+          subPackageId: 'unknown',
           images: [],
           status: 'completed',
           createdAt: new Date(p.createdAt).getTime(),
@@ -347,12 +353,9 @@ export default function App() {
         }));
         setHistory(firebaseProjects);
         setActiveTab('history');
-      } else {
-        throw new Error(data.error);
       }
     } catch (error: any) {
       console.error('Error loading projects:', error);
-      alert('Error al cargar proyectos: ' + error.message);
     }
   };
 

@@ -45,9 +45,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   } catch (error: any) {
     console.error('Error getting projects:', error);
-    res.status(500).json({
+    res.status(200).json({
       success: false,
-      error: error.message || 'Failed to get projects'
+      error: error.message || 'No se pudieron cargar los proyectos',
+      projects: [],
+      total: 0
     });
   }
 }
