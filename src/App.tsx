@@ -661,7 +661,7 @@ export default function App() {
                     Guardar Proyecto
                   </button>
                 )}
-              </div>
+              </section>
             </div>
 
             <div className="lg:col-span-1">
