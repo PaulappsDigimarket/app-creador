@@ -5,6 +5,10 @@ import dotenv from "dotenv";
 import { GoogleGenAI, Type } from "@google/genai";
 import archiver from "archiver";
 
+// Import API handlers
+import saveProjectHandler from "./api/save-project";
+import getProjectsHandler from "./api/get-projects";
+
 // Load environment variables
 dotenv.config();
 
@@ -21,6 +25,10 @@ async function startServer() {
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok", message: "DigiMarket RD Factory API is running" });
   });
+
+  // Project persistence routes
+  app.post("/api/save-project", saveProjectHandler);
+  app.get("/api/get-projects", getProjectsHandler);
 
   app.post("/api/generate-branding", async (req, res) => {
     try {
