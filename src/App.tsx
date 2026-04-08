@@ -267,6 +267,78 @@ export default function App() {
     }
   };
 
+  // Funciones para persistencia en Firebase
+  const saveProject = async () => {
+    if (!result) {
+      alert('No hay resultado para guardar');
+      return;
+    }
+
+    try {
+      const projectData = {
+        clientName,
+        extraInfo,
+        branding: selectedCategory === 'Branding' ? result : null,
+        web: (selectedCategory === 'Desarrollo Web' || selectedCategory === 'Aplicaciones Web') ? result : null,
+        social: selectedCategory === 'Social Media' ? result : null,
+        app: null // Por ahora
+      };
+
+      const response = await fetch('/api/save-project', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(projectData)
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        alert('Proyecto guardado exitosamente');
+      } else {
+        throw new Error(data.error);
+      }
+    } catch (error: any) {
+      console.error('Error saving project:', error);
+      alert('Error al guardar el proyecto: ' + error.message);
+    }
+  };
+
+  const loadProjects = async () => {
+    try {
+      const response = await fetch('/api/get-projects');
+      const data = await response.json();
+      if (data.success) {
+        // Convertir los proyectos de Firebase al formato local
+        const firebaseProjects: Project[] = data.projects.map((p: any) => ({
+          id: p.id,
+          userId: 'admin',
+          clientName: p.clientName,
+          projectName: p.clientName, // Usar clientName como projectName
+          extraInfo: p.extraInfo,
+          category: p.branding ? 'Branding' : p.web ? 'Desarrollo Web' : p.social ? 'Social Media' : 'Aplicaciones Web',
+          subPackageId: 'unknown', // No tenemos esta info
+          images: [],
+          status: 'completed',
+          createdAt: new Date(p.createdAt).getTime(),
+          result: p.branding || p.web || p.social || p.app
+        }));
+        setHistory(firebaseProjects);
+        setActiveTab('history');
+      } else {
+        throw new Error(data.error);
+      }
+    } catch (error: any) {
+      console.error('Error loading projects:', error);
+      alert('Error al cargar proyectos: ' + error.message);
+    }
+  };
+
+  // Cargar proyectos al iniciar
+  useEffect(() => {
+    if (isLoggedIn) {
+      loadProjects();
+    }
+  }, [isLoggedIn]);
+
   if (!isLoggedIn) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-brand-bg p-4">
@@ -326,6 +398,15 @@ export default function App() {
               Nuevo Proyecto
             </button>
             <button 
+              onClick={() => setActiveTab('history')}
+              className={cn(
+                "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+                activeTab === 'history' ? "bg-brand-border text-brand-cyan" : "text-brand-muted hover:text-white"
+              )}
+            >
+              Historial
+            </button>
+            <button 
               onClick={() => setActiveTab('ai')}
               className={cn(
                 "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
@@ -349,6 +430,349 @@ export default function App() {
 
       <main className="flex-1 max-w-7xl mx-auto w-full p-6">
         {activeTab === 'form' ? (
+          // Vista del formulario (ya existe)
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Contenido del formulario */}
+            <div className="lg:col-span-2 space-y-8">
+              <section className="bg-brand-card border border-brand-border rounded-2xl p-6">
+                <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
+                  <Plus className="text-brand-cyan" /> Configuración del Proyecto
+                </h2>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-brand-muted uppercase tracking-wider">Nombre del Cliente</label>
+                    <input 
+                      type="text" 
+                      value={clientName}
+                      onChange={(e) => setClientName(e.target.value)}
+                      className="w-full bg-brand-bg border border-brand-border rounded-xl px-4 py-3 focus:border-brand-cyan outline-none transition-colors"
+                      placeholder="Ej: Inmobiliaria Santo Domingo"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-brand-muted uppercase tracking-wider">Nombre del Proyecto</label>
+                    <input 
+                      type="text" 
+                      value={projectName}
+                      onChange={(e) => setProjectName(e.target.value)}
+                      className="w-full bg-brand-bg border border-brand-border rounded-xl px-4 py-3 focus:border-brand-cyan outline-none transition-colors"
+                      placeholder="Ej: Lanzamiento App Móvil"
+                    />
+                  </div>
+                  <div className="md:col-span-2 space-y-2">
+                    <label className="text-xs font-bold text-brand-muted uppercase tracking-wider">Información Extra / Contexto</label>
+                    <textarea 
+                      value={extraInfo}
+                      onChange={(e) => setExtraInfo(e.target.value)}
+                      className="w-full bg-brand-bg border border-brand-border rounded-xl px-4 py-3 focus:border-brand-cyan outline-none transition-colors min-h-[80px] font-mono text-sm"
+                      placeholder="Detalles adicionales, objetivos específicos..."
+                    />
+                  </div>
+                </div>
+
+                <h3 className="text-xs font-bold text-brand-muted uppercase tracking-wider mb-4">1. Selecciona la Categoría</h3>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
+                  {CATEGORIES.map((cat) => {
+                    const Icon = cat.icon;
+                    const isSelected = selectedCategory === cat.type;
+                    return (
+                      <button
+                        key={cat.type}
+                        onClick={() => {
+                          setSelectedCategory(cat.type);
+                          setSelectedSubPackage(null);
+                        }}
+                        className={cn(
+                          "flex flex-col items-center gap-2 p-4 rounded-xl border transition-all",
+                          isSelected 
+                            ? "bg-brand-bg border-brand-cyan text-brand-cyan shadow-lg shadow-brand-cyan-glow" 
+                            : "bg-brand-bg border-brand-border text-brand-muted hover:border-brand-muted hover:text-white"
+                        )}
+                      >
+                        <Icon size={20} />
+                        <span className="text-[10px] font-black uppercase tracking-tighter text-center">{cat.type}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {selectedCategory && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="space-y-6"
+                  >
+                    <div>
+                      <h3 className="text-xs font-bold text-brand-muted uppercase tracking-wider mb-4">2. Selecciona el Paquete</h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {PACKAGES_DATA[selectedCategory]?.map((pkg) => {
+                          const isSelected = selectedSubPackage?.id === pkg.id;
+                          return (
+                            <motion.button
+                              key={pkg.id}
+                              whileHover={{ scale: 1.02 }}
+                              whileTap={{ scale: 0.98 }}
+                              onClick={() => setSelectedSubPackage(pkg)}
+                              className={cn(
+                                "p-4 rounded-xl border text-left transition-all",
+                                isSelected 
+                                  ? "bg-brand-bg border-brand-cyan text-brand-cyan shadow-lg shadow-brand-cyan-glow" 
+                                  : "bg-brand-bg border-brand-border text-brand-muted hover:border-brand-muted hover:text-white"
+                              )}
+                            >
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="font-bold text-sm">{pkg.name}</span>
+                                <span className="text-xs font-black text-brand-cyan">{pkg.price}</span>
+                              </div>
+                              <p className="text-[10px] leading-tight opacity-80 mb-2">{pkg.description}</p>
+                              <div className="flex items-center gap-2 text-[9px] opacity-60">
+                                <Clock size={10} />
+                                <span>{pkg.deliveryTime}</span>
+                                <span>•</span>
+                                <span>{pkg.revisions} revisiones</span>
+                              </div>
+                            </motion.button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {selectedSubPackage && (
+                      <motion.div 
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="bg-brand-bg rounded-xl p-4 border border-brand-border"
+                      >
+                        <h4 className="font-bold text-sm mb-2 flex items-center gap-2">
+                          <CheckCircle2 size={16} className="text-green-500" />
+                          Paquete Seleccionado: {selectedSubPackage.name}
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                          <div>
+                            <span className="text-brand-muted">Precio:</span>
+                            <span className="text-white font-bold ml-1">{selectedSubPackage.price}</span>
+                          </div>
+                          <div>
+                            <span className="text-brand-muted">Entrega:</span>
+                            <span className="text-white font-bold ml-1">{selectedSubPackage.deliveryTime}</span>
+                          </div>
+                          <div>
+                            <span className="text-brand-muted">Revisiones:</span>
+                            <span className="text-white font-bold ml-1">{selectedSubPackage.revisions}</span>
+                          </div>
+                        </div>
+                        <div className="mt-3">
+                          <span className="text-brand-muted text-xs">Características incluidas:</span>
+                          <ul className="text-xs text-white mt-1 space-y-0.5">
+                            {selectedSubPackage.features.map((feature, idx) => (
+                              <li key={idx} className="flex items-center gap-2">
+                                <div className="w-1 h-1 bg-brand-cyan rounded-full" />
+                                {feature}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </motion.div>
+                    )}
+
+                    {(selectedCategory === 'Branding' || selectedCategory === 'Social Media') && (
+                      <motion.section 
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="bg-brand-bg rounded-xl p-4 border border-brand-border"
+                      >
+                        <h4 className="font-bold text-sm mb-4 flex items-center gap-2">
+                          <ImagePlus size={16} className="text-brand-cyan" />
+                          Referencias Visuales
+                        </h4>
+                        <div className="flex flex-wrap gap-3 mb-4">
+                          <button 
+                            onClick={() => fileInputRef.current?.click()}
+                            className="px-4 py-2 bg-brand-border border border-brand-border rounded-xl text-xs font-bold hover:border-brand-cyan transition-colors flex items-center gap-2"
+                          >
+                            <ImagePlus size={14} />
+                            Subir Imágenes
+                          </button>
+                          {selectedCategory === 'Branding' && (
+                            <button 
+                              onClick={() => handleImageUpload({ target: { files: [] } } as any, 'logo')}
+                              className="px-4 py-2 bg-brand-border border border-brand-border rounded-xl text-xs font-bold hover:border-brand-cyan transition-colors"
+                            >
+                              Logo
+                            </button>
+                          )}
+                          <button 
+                            onClick={() => handleImageUpload({ target: { files: [] } } as any, 'referencia')}
+                            className="px-4 py-2 bg-brand-border border border-brand-border rounded-xl text-xs font-bold hover:border-brand-cyan transition-colors"
+                          >
+                            Referencia
+                          </button>
+                          <button 
+                            onClick={() => handleImageUpload({ target: { files: [] } } as any, 'paleta')}
+                            className="px-4 py-2 bg-brand-border border border-brand-border rounded-xl text-xs font-bold hover:border-brand-cyan transition-colors"
+                          >
+                            Paleta
+                          </button>
+                        </div>
+                        <input 
+                          ref={fileInputRef}
+                          type="file" 
+                          multiple 
+                          accept="image/*"
+                          onChange={(e) => handleImageUpload(e, 'referencia')}
+                          className="hidden"
+                        />
+                        {images.length > 0 && (
+                          <div className="grid grid-cols-4 sm:grid-cols-6 gap-3 mt-4 p-4 bg-brand-bg rounded-xl border border-brand-border">
+                            {images.map((img, idx) => (
+                              <div key={idx} className="relative aspect-square rounded-lg overflow-hidden border border-brand-border group">
+                                <img src={img.url} alt="Ref" className="w-full h-full object-cover" />
+                                <div className="absolute bottom-0 left-0 right-0 bg-black/80 text-[8px] font-bold text-center py-0.5 uppercase text-brand-cyan">
+                                  {img.type}
+                                </div>
+                                <button onClick={() => removeImage(idx)} className="absolute top-0.5 right-0.5 bg-black/60 text-white p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <Plus size={10} className="rotate-45" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </motion.section>
+                    )}
+                  </motion.div>
+                )}
+
+                <button 
+                  onClick={startProcessing}
+                  disabled={!clientName || !projectName || !selectedSubPackage || isProcessing}
+                  className="w-full py-4 bg-brand-cyan text-black font-black rounded-2xl hover:bg-[#00cfff] transition-all shadow-xl shadow-brand-cyan-glow disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 uppercase tracking-widest text-sm"
+                >
+                  {isProcessing ? <Loader2 className="animate-spin" /> : <ChevronRight />}
+                  Comenzar Ejecución con Agentes
+                </button>
+
+                {result && (
+                  <button 
+                    onClick={saveProject}
+                    className="w-full py-3 bg-green-600 text-white font-bold rounded-2xl hover:bg-green-700 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 uppercase tracking-wide text-sm mt-4"
+                  >
+                    <CheckCircle2 size={16} />
+                    Guardar Proyecto
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="lg:col-span-1">
+              <div className="bg-brand-card border border-brand-border rounded-2xl h-[650px] flex flex-col sticky top-24 overflow-hidden">
+                <div className="p-4 border-b border-brand-border bg-brand-bg/50 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                    <h3 className="text-sm font-bold">Canal de Agentes</h3>
+                  </div>
+                  {isProcessing && <Loader2 size={14} className="animate-spin text-brand-cyan" />}
+                </div>
+                
+                <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-hide">
+                  {chatMessages.length === 0 ? (
+                    <div className="h-full flex flex-col items-center justify-center text-center p-6 opacity-40">
+                      <MessageSquare size={40} className="mb-4" />
+                      <p className="text-xs">Configura el proyecto para iniciar la comunicación con los agentes.</p>
+                    </div>
+                  ) : (
+                    chatMessages.map((msg, i) => (
+                      <div key={i} className={cn(
+                        "max-w-[90%] p-3 rounded-xl text-xs leading-relaxed",
+                        msg.role === 'user' 
+                          ? "bg-brand-cyan text-black ml-auto rounded-tr-none font-medium" 
+                          : "bg-brand-bg border border-brand-border text-brand-text rounded-tl-none"
+                      )}>
+                        <ReactMarkdown className="prose prose-invert prose-xs max-w-none">{msg.text}</ReactMarkdown>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {chatMessages.length > 0 && (
+                  <div className="p-4 border-t border-brand-border bg-brand-bg/50">
+                    <div className="flex gap-2">
+                      <input 
+                        value={currentInput}
+                        onChange={(e) => setCurrentInput(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                        placeholder="Escribe instrucciones adicionales..."
+                        className="flex-1 bg-brand-bg border border-brand-border rounded-xl px-3 py-2 text-xs focus:border-brand-cyan outline-none transition-colors"
+                      />
+                      <button 
+                        onClick={sendMessage}
+                        disabled={!currentInput.trim() || isProcessing}
+                        className="px-4 py-2 bg-brand-cyan text-black font-bold rounded-xl hover:bg-[#00cfff] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <Send size={14} />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : activeTab === 'history' ? (
+          // Vista del historial
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold">Historial de Proyectos</h2>
+              <button onClick={() => setActiveTab('form')} className="text-brand-cyan text-sm font-bold flex items-center gap-2 hover:underline">
+                <Plus size={16} /> Nuevo Proyecto
+              </button>
+            </div>
+            
+            {history.length === 0 ? (
+              <div className="bg-brand-card border border-brand-border rounded-2xl p-12 text-center">
+                <History size={48} className="text-brand-border mx-auto mb-4" />
+                <p className="text-brand-muted">No hay proyectos generados todavía.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-4">
+                {history.map((proj) => (
+                  <motion.div 
+                    key={proj.id}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="bg-brand-card border border-brand-border rounded-2xl p-6 hover:border-brand-cyan transition-all group"
+                  >
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-1">
+                          <h3 className="font-bold text-lg">{proj.projectName}</h3>
+                          <span className="px-2 py-0.5 bg-brand-bg border border-brand-border rounded text-[10px] font-bold text-brand-cyan uppercase">{proj.category}</span>
+                        </div>
+                        <p className="text-brand-muted text-sm">Cliente: <span className="text-white">{proj.clientName}</span> · {new Date(proj.createdAt).toLocaleDateString('es-DO')}</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <button 
+                          onClick={() => {
+                            setResult(proj.result);
+                            setClientName(proj.clientName);
+                            setProjectName(proj.projectName);
+                            setSelectedCategory(proj.category);
+                            setActiveTab('form');
+                          }}
+                          className="px-4 py-2 bg-brand-bg border border-brand-border rounded-xl text-xs font-bold hover:border-brand-cyan transition-colors"
+                        >
+                          Ver Detalles
+                        </button>
+                        <button onClick={() => navigator.clipboard.writeText(typeof proj.result === 'string' ? proj.result : JSON.stringify(proj.result))} className="p-2 bg-brand-bg border border-brand-border rounded-xl text-brand-muted hover:text-brand-cyan transition-colors">
+                          <Copy size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : activeTab === 'ai' ? (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-8">
               <section className="bg-brand-card border border-brand-border rounded-2xl p-6">
@@ -550,6 +974,16 @@ export default function App() {
                 {isProcessing ? <Loader2 className="animate-spin" /> : <ChevronRight />}
                 Comenzar Ejecución con Agentes
               </button>
+
+              {result && (
+                <button 
+                  onClick={saveProject}
+                  className="w-full py-3 bg-green-600 text-white font-bold rounded-2xl hover:bg-green-700 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 uppercase tracking-wide text-sm mt-4"
+                >
+                  <CheckCircle2 size={16} />
+                  Guardar Proyecto
+                </button>
+              )}
             </div>
 
             <div className="lg:col-span-1">
