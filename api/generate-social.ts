@@ -18,6 +18,55 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       };
     });
 
+    // Función auxiliar para generar social sin imágenes si hay problemas
+    const generateSocialWithoutImages = async () => {
+      console.log('Generating social media posts without images due to size limits');
+      const simplePrompt = `
+        Eres el Social Media Manager de DigiMarket RD.
+        Crea una tanda de 4 posts para las redes sociales del cliente: "${clientName}".
+        Información adicional: "${extraInfo}".
+
+        IMPORTANTE: El cliente ha subido imágenes de referencia, pero debido a limitaciones técnicas, generarás los posts basados en la descripción textual.
+
+        Para cada post debes generar:
+        1. El texto (copy) persuasivo con emojis.
+        2. Los hashtags recomendados.
+        3. Un prompt detallado en INGLÉS para generar la imagen.
+
+        Genera exactamente 4 posts.
+        Responde SOLO con el JSON, sin explicaciones ni markdown.
+      `;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: [{ role: 'user', parts: [{ text: simplePrompt }] }],
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              strategy: { type: Type.STRING },
+              posts: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    copy: { type: Type.STRING },
+                    hashtags: { type: Type.STRING },
+                    imagePrompt: { type: Type.STRING }
+                  },
+                  required: ["copy", "hashtags", "imagePrompt"]
+                }
+              }
+            },
+            required: ["strategy", "posts"]
+          }
+        }
+      });
+
+      return JSON.parse(response.text || "{}");
+    };
+
     const prompt = `
       Eres el Social Media Manager de DigiMarket RD.
       Crea una tanda de 4 posts para las redes sociales del cliente: "${clientName}".
@@ -36,43 +85,49 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       4. El índice de la imagen de referencia a usar (0 para el primer post, null para los demás).
     `;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: [
-        {
-          role: 'user',
-          parts: [
-            { text: prompt },
-            ...imageParts
-          ]
-        }
-      ],
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            strategy: { type: Type.STRING, description: "Breve resumen de la estrategia de consistencia visual" },
-            posts: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  copy: { type: Type.STRING },
-                  hashtags: { type: Type.STRING },
-                  imagePrompt: { type: Type.STRING, description: "Prompt en inglés que IMITA el estilo de la referencia" },
-                  referenceImageIndex: { type: Type.NUMBER, description: "0 para usar la foto subida, null para generar una nueva" }
-                },
-                required: ["copy", "hashtags", "imagePrompt"]
+    let socialData;
+    try {
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: [
+          {
+            role: 'user',
+            parts: [
+              { text: prompt },
+              ...imageParts
+            ]
+          }
+        ],
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              strategy: { type: Type.STRING, description: "Breve resumen de la estrategia de consistencia visual" },
+              posts: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    copy: { type: Type.STRING },
+                    hashtags: { type: Type.STRING },
+                    imagePrompt: { type: Type.STRING, description: "Prompt en inglés que IMITA el estilo de la referencia" },
+                    referenceImageIndex: { type: Type.NUMBER, description: "0 para usar la foto subida, null para generar una nueva" }
+                  },
+                  required: ["copy", "hashtags", "imagePrompt"]
+                }
               }
-            }
-          },
-          required: ["strategy", "posts"]
+            },
+            required: ["strategy", "posts"]
+          }
         }
-      }
-    });
+      });
 
-    const socialData = JSON.parse(response.text || "{}");
+      socialData = JSON.parse(response.text || "{}");
+    } catch (error) {
+      console.warn('Error with images in social media generation, trying without images:', error);
+      socialData = await generateSocialWithoutImages();
+    }
 
     // Generate/Map Images
     const generatedPosts = [];

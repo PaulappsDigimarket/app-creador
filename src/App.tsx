@@ -29,6 +29,7 @@ import { GoogleGenAI } from "@google/genai";
 import { auth, db } from './firebase';
 import { CategoryType, SubPackage, Project, ChatMessage } from './types';
 import { PACKAGES_DATA } from './constants';
+import Logo from './components/Logo';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -82,15 +83,38 @@ export default function App() {
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, type: 'logo' | 'referencia' | 'paleta') => {
     const files = e.target.files;
-    if (files) {
-      Array.from(files).forEach(file => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setImages(prev => [...prev, { url: reader.result as string, type }]);
-        };
-        reader.readAsDataURL(file);
-      });
-    }
+    if (!files || files.length === 0) return;
+
+    Array.from(files).forEach(file => {
+      // Validar tamaño (máximo 5MB por imagen)
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      if (file.size > maxSize) {
+        alert(`La imagen ${file.name} es demasiado grande. Máximo 5MB por imagen.`);
+        return;
+      }
+
+      // Validar tipo de archivo
+      if (!file.type.startsWith('image/')) {
+        alert(`El archivo ${file.name} no es una imagen válida.`);
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onloadstart = () => {
+        // Mostrar loading mientras se procesa
+        console.log(`Procesando imagen: ${file.name}`);
+      };
+      reader.onloadend = () => {
+        setImages(prev => [...prev, { url: reader.result as string, type }]);
+      };
+      reader.onerror = () => {
+        alert(`Error al procesar la imagen ${file.name}. Intenta con otra imagen.`);
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // Limpiar el input para permitir seleccionar la misma imagen de nuevo
+    e.target.value = '';
   };
 
   const removeImage = (index: number) => {
@@ -348,7 +372,8 @@ export default function App() {
           className="w-full max-w-md bg-brand-card border border-brand-border rounded-2xl p-8 shadow-2xl"
         >
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-extrabold text-brand-cyan tracking-tight">DigiMarket <span className="text-white font-light">RD</span></h1>
+            <Logo className="mx-auto" size="lg" showText={false} />
+            <h1 className="text-3xl font-extrabold text-brand-cyan tracking-tight mt-4">DigiMarket <span className="text-white font-light">RD</span></h1>
             <p className="text-brand-muted mt-2">Panel de Administración de Agencia</p>
           </div>
           <form onSubmit={handleLogin} className="space-y-4">
@@ -384,9 +409,13 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-brand-bg flex flex-col">
-      <header className="h-16 bg-brand-card border-b border-brand-border px-6 flex items-center justify-between sticky top-0 z-50">
-        <div className="flex items-center gap-8">
-          <h1 className="text-xl font-black text-brand-cyan">DigiMarket <span className="text-white font-light">RD</span></h1>
+      <header className="h-20 bg-brand-card border-b border-brand-border px-6 flex items-center justify-between sticky top-0 z-50">
+        <div className="flex items-center gap-6">
+          <Logo size="sm" showText={false} />
+          <div>
+            <h1 className="text-xl font-black text-brand-cyan">DigiMarket <span className="text-brand-secondary font-light">RD</span></h1>
+            <p className="text-[11px] uppercase tracking-[0.2em] text-brand-muted">Diseño Web · Redes Sociales · Diseño Gráfico</p>
+          </div>
           <nav className="hidden md:flex items-center gap-4">
             <button 
               onClick={() => setActiveTab('form')}
@@ -688,7 +717,9 @@ export default function App() {
                           ? "bg-brand-cyan text-black ml-auto rounded-tr-none font-medium" 
                           : "bg-brand-bg border border-brand-border text-brand-text rounded-tl-none"
                       )}>
-                        <ReactMarkdown className="prose prose-invert prose-xs max-w-none">{msg.text}</ReactMarkdown>
+                        <div className="prose prose-invert prose-xs max-w-none">
+                          <ReactMarkdown>{msg.text}</ReactMarkdown>
+                        </div>
                       </div>
                     ))
                   )}

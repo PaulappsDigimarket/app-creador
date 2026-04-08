@@ -268,5 +268,144 @@ export const PACKAGES_DATA: Record<CategoryType, SubPackage[]> = {
       revisions: 'Ilimitadas (hasta satisfacción)',
       paymentTerms: '50% adelantado, 50% al finalizar'
     }
+  ],
+  'Marketing Digital': [
+    {
+      id: 'marketing-1',
+      name: 'Planificación Estratégica Básica',
+      price: 'RD$ 5,000',
+      description: 'Plan de marketing digital para emprendedores',
+      features: [
+        'Análisis de mercado y competencia',
+        'Definición de buyer persona',
+        'Estrategia de contenido mensual',
+        'Calendario editorial básico',
+        'Métricas y KPIs a seguir'
+      ],
+      deliveryTime: '5-7 días hábiles',
+      revisions: '2 rondas',
+      paymentTerms: '100% adelantado'
+    },
+    {
+      id: 'marketing-2',
+      name: 'Planificación Estratégica Completa',
+      price: 'RD$ 12,000',
+      description: 'Estrategia integral de marketing digital',
+      features: [
+        'Todo lo del paquete Básico',
+        'Estrategia de SEO y SEM',
+        'Plan de email marketing',
+        'Estrategia de redes sociales',
+        'Presupuesto estimado de Ads',
+        'Dashboard de métricas'
+      ],
+      deliveryTime: '10-15 días hábiles',
+      revisions: '3 rondas',
+      paymentTerms: '50% adelantado, 50% al aprobar'
+    },
+    {
+      id: 'marketing-3',
+      name: 'Marketing Automation',
+      price: 'RD$ 18,000',
+      description: 'Automatización completa del marketing',
+      features: [
+        'Todo lo del paquete Completo',
+        'Configuración de funnels de venta',
+        'Automatización de email marketing',
+        'Integración con CRM',
+        'Reportes automatizados',
+        'Optimización continua'
+      ],
+      deliveryTime: '15-20 días hábiles',
+      revisions: '4 rondas',
+      paymentTerms: '50% adelantado, 50% al finalizar'
+    },
+    {
+      id: 'marketing-4',
+      name: 'Suite Completa de Marketing',
+      price: 'RD$ 25,000',
+      description: 'Sistema completo de marketing digital',
+      features: [
+        'Todo lo del paquete Automation',
+        'Gestión de campañas de Ads',
+        'SEO técnico y de contenido',
+        'Desarrollo de landing pages',
+        'Sistema de lead nurturing',
+        'Asesoría mensual incluida'
+      ],
+      deliveryTime: '20-30 días hábiles',
+      revisions: 'Ilimitadas (hasta satisfacción)',
+      paymentTerms: '50% adelantado, 50% al finalizar'
+    }
+  ],
+  'Videos y Reels': [
+    {
+      id: 'video-1',
+      name: 'Reels Starter',
+      price: 'RD$ 3,000',
+      description: '5 reels cortos para redes sociales',
+      features: [
+        '5 videos reels de 15-30 segundos',
+        'Guión y locución básica',
+        'Edición profesional',
+        'Música y efectos incluidos',
+        'Optimización para Instagram/TikTok'
+      ],
+      deliveryTime: '7-10 días hábiles',
+      revisions: '2 rondas',
+      paymentTerms: '50% adelantado, 50% al entregar'
+    },
+    {
+      id: 'video-2',
+      name: 'Reels Emprendedor',
+      price: 'RD$ 8,000',
+      description: 'Serie completa de reels + video explicativo',
+      features: [
+        '10 videos reels de 15-30 segundos',
+        '1 video explicativo de 2-3 minutos',
+        'Guión profesional con Eleven Labs',
+        'Locución con voz AI premium',
+        'Edición avanzada con efectos',
+        'Thumbnail personalizados'
+      ],
+      deliveryTime: '10-15 días hábiles',
+      revisions: '3 rondas',
+      paymentTerms: '50% adelantado, 50% al aprobar'
+    },
+    {
+      id: 'video-3',
+      name: 'Producción Audiovisual Premium',
+      price: 'RD$ 15,000',
+      description: 'Producción completa de contenido audiovisual',
+      features: [
+        '15 videos reels optimizados',
+        '3 videos explicativos de producto/servicio',
+        'Guión con storytelling profesional',
+        'Locución Eleven Labs premium',
+        'Animaciones y efectos especiales',
+        'Estrategia de distribución incluida'
+      ],
+      deliveryTime: '15-20 días hábiles',
+      revisions: '4 rondas',
+      paymentTerms: '50% adelantado, 50% al finalizar'
+    },
+    {
+      id: 'video-4',
+      name: 'Suite de Video Marketing',
+      price: 'RD$ 25,000',
+      description: 'Sistema completo de video marketing',
+      features: [
+        '25 videos reels estratégicos',
+        '5 videos explicativos premium',
+        'Serie de 3 videos testimoniales',
+        'Guión con psicología del consumidor',
+        'Locución profesional Eleven Labs',
+        'Campaña completa de distribución',
+        'Análisis de rendimiento incluido'
+      ],
+      deliveryTime: '25-30 días hábiles',
+      revisions: 'Ilimitadas (hasta satisfacción)',
+      paymentTerms: '50% adelantado, 50% al finalizar'
+    }
   ]
 };

@@ -8,6 +8,8 @@ import archiver from "archiver";
 // Import API handlers
 import saveProjectHandler from "./api/save-project";
 import getProjectsHandler from "./api/get-projects";
+import generateMarketingHandler from "./api/generate-marketing";
+import generateVideoHandler from "./api/generate-video";
 
 // Load environment variables
 dotenv.config();
@@ -26,25 +28,120 @@ async function startServer() {
     res.json({ status: "ok", message: "DigiMarket RD Factory API is running" });
   });
 
-  // Project persistence routes
-  app.post("/api/save-project", saveProjectHandler);
-  app.get("/api/get-projects", getProjectsHandler);
+// Project persistence routes - wrapped for Express compatibility
+app.post("/api/save-project", async (req, res) => {
+  try {
+    await saveProjectHandler(req as any, res as any);
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.get("/api/get-projects", async (req, res) => {
+  try {
+    await getProjectsHandler(req as any, res as any);
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Marketing routes
+app.post("/api/generate-marketing", async (req, res) => {
+  try {
+    await generateMarketingHandler(req as any, res as any);
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Video routes
+app.post("/api/generate-video", async (req, res) => {
+  // No wrap in try-catch to allow handler to manage its own error responses
+  await generateVideoHandler(req as any, res as any);
+});
 
   app.post("/api/generate-branding", async (req, res) => {
     try {
       const { clientName, subPackage, extraInfo, images } = req.body;
       const { features, name } = subPackage;
 
+      console.log(`Processing branding for ${clientName}, images: ${images?.length || 0}`);
+
       // Convert images to Gemini parts if they exist
       const imageParts = (images || []).map((img: string) => {
-        const base64Data = img.split(',')[1] || img;
-        return {
-          inlineData: {
-            data: base64Data,
-            mimeType: "image/jpeg"
+        try {
+          const base64Data = img.split(',')[1] || img;
+          // Validar que la imagen no sea demasiado grande (máximo 4MB de base64)
+          if (base64Data.length > 4 * 1024 * 1024) {
+            throw new Error('Imagen demasiado grande. Máximo 4MB por imagen.');
           }
-        };
+          return {
+            inlineData: {
+              data: base64Data,
+              mimeType: "image/jpeg"
+            }
+          };
+        } catch (error) {
+          console.error('Error processing image:', error);
+          throw new Error(`Error procesando imagen: ${error.message}`);
+        }
       });
+
+      console.log(`Converted ${imageParts.length} images for Gemini`);
+
+      // Función auxiliar para generar branding sin imágenes si hay problemas
+      const generateBrandingWithoutImages = async () => {
+        console.log('Generating branding without images due to size limits');
+        const simplePrompt = `
+          Eres el Director Creativo de DigiMarket RD.
+          Crea la identidad visual para el cliente: "${clientName}".
+          Información adicional: "${extraInfo}".
+
+          IMPORTANTE: El cliente ha subido imágenes de referencia, pero debido a limitaciones técnicas, generarás la identidad basada en la descripción textual.
+
+          Debes generar un JSON con exactamente esta estructura:
+          {
+            "brandManual": "Manual de marca en Markdown (Misión, Visión, Tono de voz, Reglas de uso)",
+            "colorPalette": [
+              { "hex": "#FF0000", "name": "Nombre del color", "usage": "Principal" }
+            ],
+            "typography": [
+              { "name": "Nombre fuente", "usage": "Principal o Secundaria" }
+            ],
+            "logoPrompts": [
+              "prompt en inglés para generar logo, vector logo, minimalist, flat design, white background"
+            ],
+            "code": {
+              "manual.md": "Contenido del manual",
+              "estilos.css": "CSS con variables de color"
+            }
+          }
+
+          Genera exactamente 3 prompts en logoPrompts.
+          Responde SOLO con el JSON, sin explicaciones ni markdown.
+        `;
+
+        const response = await ai.models.generateContent({
+          model: "gemini-3-flash-preview",
+          contents: [{ role: 'user', parts: [{ text: simplePrompt }] }],
+          config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: Type.OBJECT,
+              properties: {
+                brandManual: { type: Type.STRING },
+                colorPalette: { type: Type.ARRAY, items: { type: Type.OBJECT } },
+                typography: { type: Type.ARRAY, items: { type: Type.OBJECT } },
+                logoPrompts: { type: Type.ARRAY, items: { type: Type.STRING } },
+                code: { type: Type.OBJECT, additionalProperties: { type: Type.STRING } }
+              },
+              required: ["brandManual", "colorPalette", "typography", "logoPrompts", "code"]
+            }
+          }
+        });
+
+        return JSON.parse(response.text || "{}");
+      };
 
       // 1. Use Gemini to generate the Brand Strategy and Logo Prompts
       const prompt = `
@@ -67,64 +164,71 @@ async function startServer() {
         5. "code": Objeto con los archivos necesarios (ej. {"manual.md": "...", "estilos.css": "..."}) que implementen TODAS las características obligatorias listadas arriba.
       `;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: [
-          {
-            role: 'user',
-            parts: [
-              { text: prompt },
-              ...imageParts
-            ]
-          }
-        ],
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              brandManual: { type: Type.STRING, description: "Manual de marca en Markdown" },
-              colorPalette: {
-                type: Type.ARRAY,
-                items: {
+      let brandingData;
+      try {
+        const response = await ai.models.generateContent({
+          model: "gemini-3-flash-preview",
+          contents: [
+            {
+              role: 'user',
+              parts: [
+                { text: prompt },
+                ...imageParts
+              ]
+            }
+          ],
+          config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: Type.OBJECT,
+              properties: {
+                brandManual: { type: Type.STRING, description: "Manual de marca en Markdown" },
+                colorPalette: {
+                  type: Type.ARRAY,
+                  items: {
+                    type: Type.OBJECT,
+                    properties: {
+                      hex: { type: Type.STRING, description: "Código HEX (ej. #FF0000)" },
+                      name: { type: Type.STRING, description: "Nombre del color" },
+                      usage: { type: Type.STRING, description: "Uso (ej. Principal, Fondo, Acento)" }
+                    },
+                    required: ["hex", "name", "usage"]
+                  }
+                },
+                typography: {
+                  type: Type.ARRAY,
+                  items: {
+                    type: Type.OBJECT,
+                    properties: {
+                      name: { type: Type.STRING },
+                      usage: { type: Type.STRING }
+                    },
+                    required: ["name", "usage"]
+                  }
+                },
+                logoPrompts: {
+                  type: Type.ARRAY,
+                  items: { type: Type.STRING },
+                  description: "Prompts en inglés para generar logos"
+                },
+                code: {
                   type: Type.OBJECT,
-                  properties: {
-                    hex: { type: Type.STRING, description: "Código HEX (ej. #FF0000)" },
-                    name: { type: Type.STRING, description: "Nombre del color" },
-                    usage: { type: Type.STRING, description: "Uso (ej. Principal, Fondo, Acento)" }
-                  },
-                  required: ["hex", "name", "usage"]
+                  additionalProperties: { type: Type.STRING },
+                  description: "Mapa de archivos: nombre del archivo -> contenido del código"
                 }
               },
-              typography: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    name: { type: Type.STRING },
-                    usage: { type: Type.STRING }
-                  },
-                  required: ["name", "usage"]
-                }
-              },
-              logoPrompts: {
-                type: Type.ARRAY,
-                items: { type: Type.STRING },
-                description: "Prompts en inglés para generar logos"
-              },
-              code: {
-                type: Type.OBJECT,
-                additionalProperties: { type: Type.STRING },
-                description: "Mapa de archivos: nombre del archivo -> contenido del código"
-              }
-            },
-            required: ["brandManual", "colorPalette", "typography", "logoPrompts", "code"]
+              required: ["brandManual", "colorPalette", "typography", "logoPrompts", "code"]
+            }
           }
-        }
-      });
+        });
 
-      const resultText = response.text || "{}";
-      const brandingData = JSON.parse(resultText);
+        const resultText = response.text || "{}";
+        console.log(`Gemini response received, length: ${resultText.length}`);
+        brandingData = JSON.parse(resultText);
+      } catch (error) {
+        console.warn('Error with images, trying without images:', error);
+        brandingData = await generateBrandingWithoutImages();
+      }
 
       res.json({
         success: true,

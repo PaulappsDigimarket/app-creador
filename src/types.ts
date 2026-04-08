@@ -1,4 +1,4 @@
-export type CategoryType = 'Desarrollo Web' | 'Aplicaciones Web' | 'Social Media' | 'Branding';
+export type CategoryType = 'Desarrollo Web' | 'Aplicaciones Web' | 'Social Media' | 'Branding' | 'Marketing Digital' | 'Videos y Reels';
 
 export interface SubPackage {
   id: string;
