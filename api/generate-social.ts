@@ -8,59 +8,75 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
     const { clientName, subPackageId, extraInfo, images } = req.body;
 
-    // Determinar cantidad de posts según el paquete
-    let numPosts = 4; // default
-    if (subPackageId === 'sm-1') numPosts = 8;
-    else if (subPackageId === 'sm-2') numPosts = 15;
-    else if (subPackageId === 'sm-3') numPosts = 20;
-    else if (subPackageId === 'sm-4') numPosts = 25;
+    let numPosts = 8;
+    let numReels = 2;
+    let numStories = 4;
+    if (subPackageId === 'sm-1') { numPosts = 8; numReels = 2; numStories = 4; }
+    else if (subPackageId === 'sm-2') { numPosts = 15; numReels = 4; numStories = 8; }
+    else if (subPackageId === 'sm-3') { numPosts = 20; numReels = 6; numStories = 10; }
+    else if (subPackageId === 'sm-4') { numPosts = 25; numReels = 8; numStories = 12; }
 
-    console.log(`Generating ${numPosts} social media posts for package ${subPackageId}`);
+    console.log(`Generating ${numPosts} posts, ${numReels} reels, ${numStories} stories for package ${subPackageId}`);
 
-    // Convert images to Gemini parts if they exist
     const imageParts = (images || []).map((img: any) => {
       const imageString = typeof img === 'string' ? img : img?.url;
-      if (!imageString || typeof imageString !== 'string') {
-        throw new Error('Formato de imagen no válido');
-      }
+      if (!imageString || typeof imageString !== 'string') return null;
       const base64Data = imageString.includes(',') ? imageString.split(',')[1] : imageString;
       const mimeType = imageString.startsWith('data:') ? imageString.split(':')[1].split(';')[0] : 'image/jpeg';
-      return {
-        inlineData: {
-          data: base64Data,
-          mimeType
-        }
-      };
-    });
+      return { inlineData: { data: base64Data, mimeType } };
+    }).filter(Boolean);
 
-    // Función auxiliar para generar social sin imágenes si hay problemas
-    const generateSocialWithoutImages = async () => {
-      console.log('Generating social media posts without images due to size limits');
-      const simplePrompt = `
-        Eres el Social Media Manager de DigiMarket RD.
-        Crea una tanda de ${numPosts} posts para las redes sociales del cliente: "${clientName}".
-        Información adicional: "${extraInfo}".
+    const hasImages = imageParts.length > 0;
 
-        IMPORTANTE: El cliente ha subido imágenes de referencia, pero debido a limitaciones técnicas, generarás los posts basados en la descripción textual.
+    const styleGuide = hasImages
+      ? `Se han proporcionado imágenes de referencia del cliente. ANALIZA profundamente: colores corporativos, estilo visual, tipografía, ambiente y "vibe" de la marca. Todos los prompts de imagen deben mantener EXACTAMENTE ese estilo visual para consistencia de marca.`
+      : `Crea un estilo visual profesional y consistente para toda la marca basado en el nombre del cliente y su industria.`;
 
-        Para cada post debes generar:
-        1. El texto (copy) persuasivo con emojis.
-        2. Los hashtags recomendados.
-        3. Un prompt detallado en INGLÉS para generar la imagen.
+    const prompt = `
+Eres el Social Media Manager senior de DigiMarket RD, agencia líder en República Dominicana.
 
-        Genera exactamente ${numPosts} posts.
-        Responde SOLO con el JSON, sin explicaciones ni markdown.
-      `;
+Cliente: "${clientName}"
+Información adicional: "${extraInfo}"
+${styleGuide}
+
+GENERA EXACTAMENTE lo siguiente (no menos, no más):
+- ${numPosts} posts para feed (cuadrado 1:1)
+- ${numReels} reels (vertical 9:16)
+- ${numStories} stories (vertical 9:16)
+
+Para CADA pieza de contenido incluye:
+1. copy: texto persuasivo con emojis adaptado al formato
+2. hashtags: hashtags relevantes separados por espacios
+3. imagePrompt: prompt detallado EN INGLÉS para generar la imagen, SIEMPRE basado en el estilo de referencia
+4. format: "post", "reel" o "story"
+5. Para reels también incluye: reelScript: guión breve de 15-30 segundos con descripción de escenas
+
+El imagePrompt debe ser muy específico: incluir estilo fotográfico, iluminación, colores, composición, ambiente, y que sea consistente con la marca del cliente.
+
+Responde SOLO con JSON válido.
+    `;
+
+    let socialData: any = null;
+
+    try {
+      const contents: any[] = [{
+        role: 'user',
+        parts: [
+          { text: prompt },
+          ...(hasImages ? imageParts : [])
+        ]
+      }];
 
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: [{ role: 'user', parts: [{ text: simplePrompt }] }],
+        model: "gemini-2.0-flash",
+        contents,
         config: {
           responseMimeType: "application/json",
           responseSchema: {
             type: Type.OBJECT,
             properties: {
               strategy: { type: Type.STRING },
+              brandColors: { type: Type.STRING },
               posts: {
                 type: Type.ARRAY,
                 items: {
@@ -68,9 +84,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                   properties: {
                     copy: { type: Type.STRING },
                     hashtags: { type: Type.STRING },
-                    imagePrompt: { type: Type.STRING }
+                    imagePrompt: { type: Type.STRING },
+                    format: { type: Type.STRING },
+                    reelScript: { type: Type.STRING }
                   },
-                  required: ["copy", "hashtags", "imagePrompt"]
+                  required: ["copy", "hashtags", "imagePrompt", "format"]
                 }
               }
             },
@@ -79,46 +97,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
       });
 
-      return JSON.parse(response.text || "{}");
-    };
-
-    const prompt = `
-      Eres el Social Media Manager de DigiMarket RD.
-      Crea una tanda de ${numPosts} posts para las redes sociales del cliente: "${clientName}".
-      Información adicional: "${extraInfo}".
-
-      IMPORTANTE - GUÍA DE ESTILO:
-      Se ha proporcionado una imagen de referencia.
-      1. Analiza profundamente el estilo visual de esta imagen (colores, iluminación, tipo de fotografía, ambiente, composición).
-      2. El POST #1 DEBE usar obligatoriamente la imagen de referencia proporcionada (referenceImageIndex: 0).
-      3. Para los POSTS #2 al #${numPosts}, debes generar prompts en INGLÉS que describan escenas NUEVAS pero que mantengan EXACTAMENTE el mismo estilo visual, paleta de colores, iluminación, composición y "vibe" de la imagen de referencia. Queremos que TODOS los posts parezcan de la misma sesión de fotos y marca consistente.
-
-      Para cada post debes generar:
-      1. El texto (copy) persuasivo con emojis.
-      2. Los hashtags recomendados.
-      3. Un prompt detallado en INGLÉS para generar la imagen (solo para los posts que no usan la referencia).
-      4. El índice de la imagen de referencia a usar (0 para el primer post, null para los demás).
-    `;
-
-    let socialData;
-    try {
+      socialData = JSON.parse(response.text || "{}");
+    } catch (err) {
+      console.warn('Gemini with images failed, retrying without images:', err);
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: [
-          {
-            role: 'user',
-            parts: [
-              { text: prompt },
-              ...imageParts
-            ]
-          }
-        ],
+        model: "gemini-2.0-flash",
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
         config: {
           responseMimeType: "application/json",
           responseSchema: {
             type: Type.OBJECT,
             properties: {
-              strategy: { type: Type.STRING, description: "Breve resumen de la estrategia de consistencia visual" },
+              strategy: { type: Type.STRING },
+              brandColors: { type: Type.STRING },
               posts: {
                 type: Type.ARRAY,
                 items: {
@@ -126,10 +117,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                   properties: {
                     copy: { type: Type.STRING },
                     hashtags: { type: Type.STRING },
-                    imagePrompt: { type: Type.STRING, description: "Prompt en inglés que IMITA el estilo de la referencia" },
-                    referenceImageIndex: { type: [Type.NUMBER, Type.NULL], description: "0 para usar la foto subida, null para generar una nueva" }
+                    imagePrompt: { type: Type.STRING },
+                    format: { type: Type.STRING },
+                    reelScript: { type: Type.STRING }
                   },
-                  required: ["copy", "hashtags", "imagePrompt"]
+                  required: ["copy", "hashtags", "imagePrompt", "format"]
                 }
               }
             },
@@ -137,52 +129,61 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           }
         }
       });
-
-      // Intentar parsear la respuesta como JSON
-      try {
-        socialData = JSON.parse(response.text || "{}");
-      } catch (parseError) {
-        console.error('Error parsing Gemini response as JSON:', parseError);
-        console.log('Raw response:', response.text);
-        // Si falla el parseo, usar la función sin imágenes
-        socialData = await generateSocialWithoutImages();
-      }
-    } catch (error) {
-      console.warn('Error with images in social media generation, trying without images:', error);
-      socialData = await generateSocialWithoutImages();
+      socialData = JSON.parse(response.text || "{}");
     }
 
-    // Generate/Map Images
-    const generatedPosts = [];
-    console.log(`Processing ${socialData.posts.length} posts with ${images?.length || 0} reference images`);
+    if (!socialData.posts || socialData.posts.length === 0) {
+      throw new Error('No se generaron posts. Intenta de nuevo.');
+    }
 
-    for (let i = 0; i < socialData.posts.length; i++) {
-      const post = socialData.posts[i];
+    const allPosts = socialData.posts;
+    const generatedPosts = [];
+
+    for (let i = 0; i < allPosts.length; i++) {
+      const post = allPosts[i];
       let imageUrl = "";
 
-      // El primer post SIEMPRE usa la imagen de referencia si existe
-      if (i === 0 && images && images[0]) {
+      const isFirstPost = i === 0;
+      const format = post.format || 'post';
+      const isReel = format === 'reel';
+      const isStory = format === 'story';
+
+      if (isFirstPost && hasImages && images[0]) {
         imageUrl = typeof images[0] === 'string' ? images[0] : images[0].url;
-        console.log(`Post ${i + 1}: Using reference image`);
       } else {
-        // Los demás posts generan imágenes nuevas pero consistentes
-        const stylePrompt = post.imagePrompt || `Professional business photography in the same style as the reference image, consistent lighting and colors`;
-        const encodedPrompt = encodeURIComponent(stylePrompt + " --v 6.0 --style raw --ar 1:1 --quality 2");
-        const seed = Math.floor(Math.random() * 100000);
-        imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?seed=${seed}&width=1080&height=1080&nologo=true&model=flux`;
-        console.log(`Post ${i + 1}: Generating new image with consistent style`);
+        const width = isReel || isStory ? 1080 : 1080;
+        const height = isReel || isStory ? 1920 : 1080;
+        const cleanPrompt = encodeURIComponent(
+          (post.imagePrompt || `Professional brand photography, high quality, ${clientName}`)
+            .replace(/[^\w\s,.-]/g, ' ')
+            .trim()
+        );
+        const seed = Math.floor(Math.random() * 999999);
+        imageUrl = `https://image.pollinations.ai/prompt/${cleanPrompt}?seed=${seed}&width=${width}&height=${height}&nologo=true&enhance=true&model=flux`;
       }
 
       generatedPosts.push({
         ...post,
         imageUrl,
-        postNumber: i + 1
+        postNumber: i + 1,
+        format: post.format || 'post'
       });
     }
 
-    console.log(`Successfully generated ${generatedPosts.length} posts`);
-    res.json({ success: true, data: { strategy: socialData.strategy, posts: generatedPosts } });
+    res.json({
+      success: true,
+      data: {
+        strategy: socialData.strategy,
+        brandColors: socialData.brandColors || '',
+        posts: generatedPosts.filter((p: any) => p.format === 'post'),
+        reels: generatedPosts.filter((p: any) => p.format === 'reel'),
+        stories: generatedPosts.filter((p: any) => p.format === 'story'),
+        all: generatedPosts
+      }
+    });
+
   } catch (error: any) {
+    console.error('[generate-social] Error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 }
