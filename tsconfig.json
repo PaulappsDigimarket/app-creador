@@ -1,25 +1,23 @@
 {
-  "name": "digimarket-rd-factory",
-  "version": "1.0.0",
-  "private": true,
-  "type": "commonjs",
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "jsx": "react-jsx",
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "ignoreDeprecations": "6.0",
+    "types": ["vite/client", "@types/node"]
   },
-  "dependencies": {
-    "@vercel/node": "^3.2.0",
-    "openai": "^4.77.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
-  },
-  "devDependencies": {
-    "@types/node": "^22.10.2",
-    "@types/react": "^18.3.12",
-    "@types/react-dom": "^18.3.1",
-    "@vitejs/plugin-react-swc": "^3.7.1",
-    "typescript": "^5.8.3",
-    "vite": "^6.4.2"
-  }
+  "include": [
+    "src",
+    "api",
+    "lib"
+  ]
 }
