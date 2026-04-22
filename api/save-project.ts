@@ -1,43 +1,30 @@
-import { VercelRequest, VercelResponse } from '@vercel/node';
-import { collection, addDoc } from 'firebase/firestore';
-import { db } from '../src/firebase';
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ success: false, error: 'Method not allowed' });
-  }
+export default function handler(req: VercelRequest, res: VercelResponse) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'POST') return res.status(405).json({ success: false, error: 'Método no permitido' });
 
   try {
-    const { clientName, projectName, extraInfo, branding, web, social, app } = req.body;
-
-    if (!clientName) {
-      return res.status(400).json({ success: false, error: 'clientName is required' });
+    const projectData = req.body;
+    if (!projectData || Object.keys(projectData).length === 0) {
+      return res.status(400).json({ success: false, error: 'Cuerpo vacío o datos faltantes' });
     }
 
-    const projectData = {
-      clientName,
-      projectName: projectName || '',
-      extraInfo: extraInfo || '',
-      branding: branding || null,
-      web: web || null,
-      social: social || null,
-      app: app || null,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
+    // Simulate saving (in-memory)
+    // For demonstration we just log
+    console.log('Project received:', projectData);
 
-    const docRef = await addDoc(collection(db, 'projects'), projectData);
-
-    res.json({
+    return res.json({
       success: true,
-      projectId: docRef.id,
-      message: 'Project saved successfully'
+      message: 'Proyecto guardado exitosamente',
+      received: projectData,
     });
-  } catch (error: any) {
-    console.error('Error saving project:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message || 'Failed to save project'
-    });
+  } catch (e) {
+    console.error('Error saving project:', e);
+    return res.status(500).json({ success: false, error: 'Error interno del servidor' });
   }
 }
