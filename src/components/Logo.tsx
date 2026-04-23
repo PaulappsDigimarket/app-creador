@@ -9,7 +9,13 @@ const LOGOS = {
 
 const PALETTE = ['#FF6B6B', '#4ECCA3', '#1E90FF'];
 
-export default function Logo() {
+interface LogoProps {
+  className?: string;
+  size?: 'sm' | 'lg';
+  showText?: boolean;
+}
+
+export default function Logo({ className, size = 'sm', showText = true }: LogoProps) {
   const [pdfGenerating, setPdfGenerating] = useState(false);
 
   const downloadPNG = (url: string, bg: 'transparent' | 'white') => {
@@ -59,6 +65,22 @@ export default function Logo() {
     }
   };
 
+  const imgSize = size === 'lg' ? 64 : 36;
+
+  // Modo header: solo muestra el logo pequeño, sin descargas
+  if (!showText) {
+    return (
+      <div className={className}>
+        <img
+          src={LOGOS.logo1}
+          alt="DigiMarket RD"
+          style={{ width: imgSize, height: imgSize, objectFit: 'contain' }}
+        />
+      </div>
+    );
+  }
+
+  // Modo completo: muestra logos con descargas y PDF
   return (
     <div style={{ padding: 20 }}>
       {Object.entries(LOGOS).map(([key, src]) => (

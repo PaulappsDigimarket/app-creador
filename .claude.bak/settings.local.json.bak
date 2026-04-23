@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl *)",
+      "Bash(npm audit *)",
+      "Bash(npm start *)",
+      "Bash(netstat -ano)",
+      "Bash(findstr :3000)",
+      "Bash(node *)",
+      "Bash(npx vercel *)",
+      "Bash(> assets/web-basica-emprendedor/package-docs.md)",
+      "Bash(claude)",
+      "Bash(tee ./voz-test.txt)",
+      "Bash(npx tsc *)",
+      "Bash(pkill -f \"npm start\" cd \"F:\\\\digimarket rd\\\\proyectos\\\\creador\")",
+      "Bash(cmd.exe /c move \"F:\\\\digimarket rd\\\\proyectos\\\\creador\\\\test-generate.js\" \"F:\\\\digimarket rd\\\\proyectos\\\\creador\\\\test-generate.cjs\")",
+      "WebFetch(domain:localhost)",
+      "Bash(tsc *)"
+    ]
+  }
+}

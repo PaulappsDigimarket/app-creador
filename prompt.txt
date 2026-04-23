@@ -1,0 +1,58 @@
+Tienes que corregir 5 problemas críticos en este proyecto. 
+Corrígelos EN ORDEN, uno por uno, verificando cada uno antes de continuar.
+
+---
+
+PROBLEMA 1 - GUARDAR PROYECTOS EN FIREBASE:
+El proyecto dice "guardado localmente" porque Firebase no está inicializado.
+- Verifica que src/firebase.ts use import.meta.env.VITE_FIREBASE_* correctamente
+- Asegúrate que el servicio de guardar proyectos llame a Firestore y NO a localStorage
+- Si Firebase no está disponible, muestra un error claro al usuario en lugar de silenciosamente guardar local
+- Crea un archivo .env.example con todas las variables VITE_FIREBASE_* necesarias
+
+---
+
+PROBLEMA 2 - DESCARGAR LOGOS COMO PNG:
+Los logos generados no tienen botón de descarga PNG individual.
+- En el componente donde se muestran los logos del branding, agrega un botón "Descargar PNG" debajo de cada logo
+- La función debe convertir el SVG a canvas 800x800px y descargarlo como PNG
+- También agrega opción de descargar en fondo transparente y fondo blanco
+- El botón debe tener ícono de descarga y texto "PNG"
+
+---
+
+PROBLEMA 3 - IMAGEN DE REFERENCIA EN SOCIAL MEDIA Y STORIES:
+La imagen de referencia se sube pero NO se usa al generar posts de Social Media ni Stories.
+- En api/generate.ts localiza donde se generan los paquetes de Social Media y Stories
+- El módulo de Branding YA llama analyzeBrandImages correctamente, replica ese mismo flujo para Social y Stories
+- La imagen de referencia debe pasarse a analyzeBrandImages ANTES de construir el prompt
+- El análisis visual (colores, estilo, energía) debe inyectarse en el prompt de cada post y story
+
+---
+
+PROBLEMA 4 - VIDEOS Y REELS SE CUELGAN:
+Replicate tarda 2-5 minutos generando videos y el frontend hace timeout.
+- En api/generate-asset.ts aumenta el maxWait del polling a 300000ms (5 minutos)
+- El intervalo de polling debe ser cada 5000ms para no saturar la API
+- En el frontend muestra un progress indicator animado con mensaje "Generando video... esto puede tomar hasta 5 minutos"
+- Si falla después de 3 intentos (ya tienes el retry), muestra el error específico de Replicate al usuario
+
+---
+
+PROBLEMA 5 - CALIDAD DE COPIES:
+Los copies generados son genéricos y no usan la información del cliente ni el análisis visual.
+- En api/generate.ts mejora el prompt de copies para que incluya obligatoriamente:
+  * Nombre del artista/marca
+  * Género musical o industria
+  * Tono de marca (el que el usuario eligió)
+  * Colores y estilo detectados por analyzeBrandImages
+  * Llamada a la acción específica según el tipo de post
+- Los copies deben sonar naturales en español latino, no corporativos
+- Cada copy debe ser único, no repetir la misma estructura
+
+---
+
+Después de corregir los 5 problemas:
+1. Corre el build con: npm run build
+2. Si hay errores de TypeScript, corrígelos todos
+3. Confirma que no hay errores antes de terminar
