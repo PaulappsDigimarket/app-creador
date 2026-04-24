@@ -221,8 +221,7 @@ export default function App() {
       const data = await response.json();
       const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "Error al generar el resultado.";
 
-      const text = response.choices[0]?.message?.content || "Error al generar el resultado.";
-      setResult(text);
+            setResult(text);
 
       const newProject: Project = {
         id: Date.now().toString(),

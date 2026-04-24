@@ -2,12 +2,10 @@ import React, { useState } from 'react';
 import { jsPDF } from 'jspdf';
 
 const LOGOS = {
-  logo1: '/logos/logo1.svg',
-  logo2: '/logos/logo2.svg',
-  logo3: '/logos/logo3.svg',
+  logo1: '/logo.png',
 };
 
-const PALETTE = ['#FF6B6B', '#4ECCA3', '#1E90FF'];
+const PALETTE = ['#22a1ff', '#ffb230', '#29d37d'];
 
 interface LogoProps {
   className?: string;
