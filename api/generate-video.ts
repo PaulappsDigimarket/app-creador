@@ -6,7 +6,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).json({ success: false, error: 'Method not allowed' });
 
   try {
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
     const { clientName, subPackageId, extraInfo, images } = req.body;
 
     // Convert images to Gemini parts if they exist

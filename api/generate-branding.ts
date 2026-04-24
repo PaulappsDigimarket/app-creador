@@ -97,20 +97,7 @@ async function generateBrandingText(
     errors.push(msg);
   }
 
-  // Intento 3: Gemini directo (si tenés API key de Gemini para este servicio)
-  if (process.env.GEMINI_API_KEY) {
-    try {
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ role: 'user', parts: [{ text: prompt }] }],
-            generationConfig: { temperature: 0.7 }
-          })
-        }
-      );
+  
       
       if (response.ok) {
         const data = await response.json();

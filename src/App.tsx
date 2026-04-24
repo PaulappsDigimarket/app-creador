@@ -165,12 +165,6 @@ export default function App() {
 
   const generateFinalResult = async (userInstructions: string) => {
     try {
-      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-
-      if (!apiKey) {
-        throw new Error("Falta la API Key. Agregá VITE_GEMINI_API_KEY en .env.local");
-      }
-
       const prompt = `Actúa como un Agente Maestro de Marketing y Tecnología en DigiMarket RD (República Dominicana).
       Tu tarea es generar un plan de ejecución y propuesta técnica IRREFUTABLE para un cliente.
 
@@ -201,27 +195,41 @@ export default function App() {
 
       IMPORTANTE: No inventes precios ni tiempos. Usa exactamente los proporcionados. Sé extremadamente profesional y detallado.`;
 
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ role: 'user', parts: [{ text: prompt }] }],
-            generationConfig: { temperature: 0.7, maxOutputTokens: 8192 }
-          })
-        }
-      );
+      // Usa el backend (Groq) en lugar de Gemini directo
+      const response = await fetch('/api/generate-web', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientName,
+          subPackage: selectedSubPackage,
+          extraInfo,
+          images
+        })
+      });
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`Gemini error ${response.status}: ${errorText}`);
+        throw new Error(`Backend error ${response.status}: ${errorText}`);
       }
 
       const data = await response.json();
-      const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "Error al generar el resultado.";
 
-            setResult(text);
+      if (!data.success) {
+        throw new Error(data.error || 'Error del backend');
+      }
+
+      // Para la propuesta final combinamos chat y resultado técnico
+      const webData = data.data || {};
+      let finalText = '## 📋 RESUMEN DE LA PROPUESTA\n\n';
+      finalText += webData.heroCopy?.title ? `### ${webData.heroCopy.title}\n\n` : '';
+      finalText += webData.heroCopy?.subtitle ? `${webData.heroCopy.subtitle}\n\n` : '';
+      finalText += webData.heroCopy?.cta ? `**CTA:** ${webData.heroCopy.cta}\n\n` : '';
+      finalText += '\n## 🗺️ SITEMAP\n\n';
+      finalText += (webData.sitemap || []).map((s: string) => `- ${s}`).join('\n') + '\n\n';
+
+      const text = finalText;
+
+      setResult(text);
 
       const newProject: Project = {
         id: Date.now().toString(),
@@ -236,23 +244,21 @@ export default function App() {
         createdAt: Date.now(),
         result: text
       };
-      
+
       // Guardar automáticamente en localStorage
       const existing = JSON.parse(localStorage.getItem('digi_projects') || '[]');
       existing.unshift(newProject);
       localStorage.setItem('digi_projects', JSON.stringify(existing));
-      
+
       setHistory(prev => [newProject, ...prev]);
-      setChatMessages(prev => [...prev, { role: 'model', text: '✅ **Propuesta generada exitosamente.**' }]);
+      setChatMessages(prev => [...prev, { role: 'model', text: '✅ **Propuesta generada exitosamente usando Groq.**' }]);
       showToast('success', 'Propuesta generada correctamente');
 
     } catch (error: any) {
       console.error("Error generating content:", error);
-      let errorMessage = "Hubo un error al conectar con los agentes.";
+      let errorMessage = "Hubo un error al conectar con el backend (Groq).";
 
-      if (error.message?.includes("Unauthorized") || error.message?.includes("401")) {
-        errorMessage = "API Key inválida. Verificá VITE_OPENROUTER_API_KEY en .env.local";
-      } else if (error.message?.includes("429")) {
+      if (error.message?.includes("429")) {
         errorMessage = "Límite de requests agotado. Esperá un momento e intentá de nuevo.";
       } else if (error.message) {
         errorMessage = error.message;

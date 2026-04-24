@@ -18,7 +18,6 @@
 - **Funcionalidad:** Guarda eventos en colección `replicate_events` de Firestore
 
 ### 3. Variables de Entorno Requeridas
-- **VITE_GEMINI_API_KEY**: Clave API para Gemini (generación de contenido)
 - **REPLICATE_API_TOKEN**: Token para API de Replicate (videos e imágenes)
 - **FIREBASE_***: Configuración de Firebase Admin SDK
 - **VITE_FIREBASE_***: Configuración Firebase para frontend

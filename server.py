@@ -107,16 +107,7 @@ def is_rate_limit_error(status_code, data):
     return False
 
 
-def call_gemini_with_retry(body, max_retries=3):
-    """Llama a Gemini con exponential backoff para rate limits"""
-    gemini_api_key = os.environ.get('GEMINI_API_KEY', '').strip()
-    
-    if not gemini_api_key:
-        raise Exception('Falta GEMINI_API_KEY en las variables de entorno')
-    
-    payload = claude_to_gemini(body)
-    url = f'https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent?key={gemini_api_key}'
-    
+
     for attempt in range(max_retries):
         try:
             resp = requests.post(url, json=payload, timeout=60)

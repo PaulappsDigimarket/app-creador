@@ -8,7 +8,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
     const { clientName, subPackageId, extraInfo } = req.body;
 
     const prompt = `

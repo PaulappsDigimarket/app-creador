@@ -51,9 +51,7 @@ npm install
 
 Crea un archivo `.env.local` en la raíz del proyecto:
 
-```env
-# Required - Google Gemini API Key
-GEMINI_API_KEY="tu_api_key_de_gemini"
+
 
 # Optional - Firebase Configuration
 VITE_FIREBASE_PROJECT_ID="tu_project_id"
@@ -87,7 +85,6 @@ La aplicación estará disponible en: **http://localhost:3000**
 2. Click en **"Add New..."** → **"Project"**
 3. Importa tu repositorio de GitHub
 4. Configura las variables de entorno en Vercel:
-   - `GEMINI_API_KEY` = tu clave de API de Gemini
    - Las variables de Firebase (opcional)
 5. Click en **Deploy**
 
